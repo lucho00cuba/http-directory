@@ -1,0 +1,24 @@
+{
+  "name": "HTTP_Directory",
+  "short_name": "HTTP_Directory",
+  "description": "A clean, technical reference for every HTTP status code.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fcf8f8",
+  "theme_color": "#fcf8f8",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

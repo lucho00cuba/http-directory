@@ -1,0 +1,45 @@
+:root {
+  color-scheme: light;
+
+  --background: #fcf8f8;
+  --foreground: #1c1b1b;
+  --card: #ffffff;
+  --card-foreground: #1c1b1b;
+  --primary: #0b0f10;
+  --primary-foreground: #ffffff;
+  --secondary: #e9e2d0;
+  --secondary-foreground: #4a4739;
+  --muted: #f1eded;
+  --muted-foreground: #57595b;
+  --accent: #ebe7e7;
+  --accent-foreground: #1c1b1b;
+  --destructive: #ba1a1a;
+  --border: rgba(28, 27, 27, 0.1);
+  --input: rgba(28, 27, 27, 0.12);
+  --ring: #74777a;
+  --radius: 0.5rem;
+
+  --surface: #fcf8f8;
+  --surface-container: #f1eded;
+  --surface-container-high: #ebe7e7;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #3f4143;
+  --sidebar-accent: #f3efef;
+  --code-bg: #e4ecdd;
+  --code-fg: #16211a;
+
+  /* Text accents: ≥4.5:1 on --background and on accent/10 soft chips */
+  --info: #1e5fcc;
+  --success: #097048;
+  --redirect: #9a5708;
+  --client-error: #b8322a;
+  --server-error: #8f2a24;
+
+  --font-display: "Geist Variable", Geist, ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter Variable", Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --sidebar-width: 280px;
+  --content-max-width: 820px;
+  --topbar-height: 64px;
+}

@@ -1,0 +1,324 @@
+---
+import { getCollection, render } from "astro:content";
+import DocsLayout from "../../layouts/DocsLayout.astro";
+import StatusHeader from "../../components/StatusHeader.astro";
+import SeeAlso from "../../components/SeeAlso.astro";
+import {
+  CATEGORY_META,
+  canonicalPath,
+  displayTitle,
+  formatUpdated,
+  pageLead,
+  pathsForStatus,
+  relatedInCategory,
+} from "../../lib/status";
+import { withBase } from "../../lib/site";
+
+export async function getStaticPaths() {
+  const statuses = await getCollection("status");
+  return statuses.flatMap((entry) =>
+    pathsForStatus(entry).map((slug) => ({
+      params: { slug },
+      props: { entry },
+    }))
+  );
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+const all = await getCollection("status");
+const seeAlsoSlugs = entry.data.seeAlso ?? [];
+const fromFrontmatter = all.filter((e) => seeAlsoSlugs.includes(e.data.slug));
+const related =
+  fromFrontmatter.length > 0 ? fromFrontmatter : relatedInCategory(entry, all);
+const meta = CATEGORY_META[entry.data.category];
+const canonical = canonicalPath(entry);
+const updated = formatUpdated(entry.data.updated);
+const lead = pageLead(entry);
+---
+
+<DocsLayout
+  title={displayTitle(entry)}
+  description={entry.data.description}
+  canonical={canonical}
+  activeSlug={entry.data.slug}
+  activeCategory={entry.data.category}
+  statusCode={entry.data.code}
+  ogType="article"
+>
+  <article class="page">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href={withBase()}>Directory</a>
+      <svg
+        class="sep"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        aria-hidden="true"
+      >
+        <path d="m9 18 6-6-6-6"></path>
+      </svg>
+      <a href={withBase(`#${meta.id}`)}>{meta.label} {meta.name}</a>
+      <svg
+        class="sep"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        aria-hidden="true"
+      >
+        <path d="m9 18 6-6-6-6"></path>
+      </svg>
+      <span class="here" aria-current="page">{entry.data.code}</span>
+    </nav>
+
+    <StatusHeader
+      code={entry.data.code}
+      title={entry.data.title}
+      category={entry.data.category}
+      summary={lead}
+      updated={updated ?? undefined}
+    />
+
+    <section class="overview">
+      <h2 id="overview">Overview</h2>
+      <div class="prose" data-prose>
+        <Content />
+      </div>
+    </section>
+
+    <SeeAlso entries={related} />
+
+    <a class="back" href={withBase()}>
+      <svg
+        class="size-4"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        aria-hidden="true"
+      >
+        <path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path>
+      </svg>
+      Back to directory
+    </a>
+  </article>
+</DocsLayout>
+
+<script>
+  function initCopyButtons() {
+    document
+      .querySelectorAll<HTMLPreElement>("[data-prose] pre")
+      .forEach((pre) => {
+        if (pre.closest(".code-block")) return;
+
+        const wrap = document.createElement("div");
+        wrap.className = "code-block";
+        pre.parentNode?.insertBefore(wrap, pre);
+        wrap.appendChild(pre);
+
+        const code = pre.querySelector("code");
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "copy-btn";
+        btn.setAttribute("aria-label", "Copy code");
+        btn.innerHTML =
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>';
+        btn.addEventListener("click", async () => {
+          const text = (
+            code?.textContent ??
+            Array.from(pre.childNodes)
+              .filter(
+                (n) =>
+                  n.nodeType === Node.TEXT_NODE ||
+                  (n instanceof HTMLElement && n.tagName === "CODE")
+              )
+              .map((n) => n.textContent ?? "")
+              .join("")
+          ).trimEnd();
+          try {
+            await navigator.clipboard.writeText(text);
+            btn.setAttribute("aria-label", "Copied");
+            btn.innerHTML =
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+            setTimeout(() => {
+              btn.setAttribute("aria-label", "Copy code");
+              btn.innerHTML =
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>';
+            }, 1500);
+          } catch {
+            /* ignore */
+          }
+        });
+        wrap.appendChild(btn);
+        // Keep code start visible — abspos copy btn inside scrolling <pre> used to pull scrollRight
+        pre.scrollLeft = 0;
+      });
+  }
+
+  document.addEventListener("astro:page-load", initCopyButtons);
+</script>
+
+<style>
+  .page {
+    max-width: var(--content-max-width);
+    width: 100%;
+    margin: 0 auto;
+    padding: 1.5rem 1rem 1.25rem;
+    box-sizing: border-box;
+  }
+
+  @media (min-width: 768px) {
+    .page {
+      padding: 3.5rem 2.5rem 2rem;
+    }
+  }
+
+  .breadcrumb {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+    margin-bottom: 1.25rem;
+    font-size: 0.8125rem;
+    color: var(--muted-foreground);
+  }
+
+  @media (min-width: 768px) {
+    .breadcrumb {
+      gap: 0.35rem;
+      margin-bottom: 2rem;
+      font-size: 0.875rem;
+    }
+  }
+
+  .breadcrumb a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .breadcrumb a:hover {
+    color: var(--foreground);
+  }
+
+  .sep {
+    width: 0.75rem;
+    height: 0.75rem;
+    opacity: 0.7;
+    flex-shrink: 0;
+  }
+
+  @media (min-width: 768px) {
+    .sep {
+      width: 0.875rem;
+      height: 0.875rem;
+    }
+  }
+
+  .here {
+    font-family: var(--font-mono);
+    color: var(--foreground);
+  }
+
+  .overview h2 {
+    margin: 0 0 0.75rem;
+    font-family: var(--font-display);
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--foreground);
+  }
+
+  @media (min-width: 768px) {
+    .overview h2 {
+      font-size: 1.25rem;
+    }
+  }
+
+  .back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--muted-foreground);
+    text-decoration: none;
+  }
+
+  .back:hover {
+    color: var(--foreground);
+  }
+</style>
+
+<style is:global>
+  .prose .code-block {
+    position: relative;
+    margin: 0 0 1.25rem;
+    max-width: 100%;
+  }
+
+  .prose .code-block pre {
+    margin: 0;
+  }
+
+  .code-block .copy-btn {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    border: 1px solid color-mix(in oklab, var(--foreground) 14%, transparent);
+    border-radius: 0.375rem;
+    background: color-mix(in oklab, var(--card) 88%, var(--foreground));
+    color: var(--foreground);
+    cursor: pointer;
+    opacity: 0.85;
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--foreground) 8%, transparent);
+    transition:
+      opacity 0.15s ease,
+      background 0.15s ease;
+  }
+
+  @media (min-width: 768px) {
+    .code-block .copy-btn {
+      top: 0.5rem;
+      right: 0.5rem;
+      width: 2rem;
+      height: 2rem;
+      opacity: 0.7;
+    }
+  }
+
+  .code-block:hover .copy-btn,
+  .code-block .copy-btn:focus-visible {
+    opacity: 1;
+  }
+
+  .code-block .copy-btn:hover,
+  .code-block .copy-btn:focus-visible {
+    background: var(--card);
+  }
+
+  @media (hover: none) {
+    .code-block .copy-btn {
+      opacity: 1;
+    }
+  }
+
+  .code-block .copy-btn svg {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+
+  @media (min-width: 768px) {
+    .code-block .copy-btn svg {
+      width: 1rem;
+      height: 1rem;
+    }
+  }
+</style>

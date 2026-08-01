@@ -1,0 +1,134 @@
+---
+import { site, withBase } from "../lib/site";
+---
+
+<footer class="footer">
+  <a href={withBase()} class="brand">
+    {site.brand.primary}<span class="muted">{site.brand.secondary}</span>
+  </a>
+  <p class="tagline">
+    {site.shortDescription}
+    <span class="inspire">
+      Inspired by{" "}
+      <a href={site.inspiration.url} target="_blank" rel="noopener noreferrer"
+        >{site.inspiration.name}</a
+      >
+      {" "}by{" "}
+      <a
+        href={site.inspiration.github}
+        target="_blank"
+        rel="noopener noreferrer">{site.inspiration.handle}</a
+      >
+    </span>
+  </p>
+  <nav class="links" aria-label="Footer">
+    <a href={withBase("about")}>About</a>
+    <a
+      href={site.owner.repo}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Upstream source on GitHub (opens in a new tab)">GitHub</a
+    >
+  </nav>
+</footer>
+
+<style>
+  .footer {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-top: 0;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.875rem;
+    color: var(--muted-foreground);
+  }
+
+  @media (min-width: 768px) {
+    .footer {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 1.5rem;
+    }
+  }
+
+  .brand {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--foreground);
+    flex-shrink: 0;
+    text-decoration: none;
+  }
+
+  .brand:hover .muted {
+    color: var(--foreground);
+  }
+
+  .brand:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  .muted {
+    color: var(--muted-foreground);
+  }
+
+  .tagline {
+    margin: 0;
+    min-width: 0;
+    line-height: 1.55;
+    text-wrap: pretty;
+  }
+
+  @media (min-width: 768px) {
+    .tagline {
+      text-align: center;
+      justify-self: center;
+      max-width: 28rem;
+    }
+  }
+
+  .inspire {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 0.8125rem;
+    color: color-mix(in oklab, var(--muted-foreground) 88%, transparent);
+  }
+
+  .tagline a {
+    color: var(--foreground);
+    font-weight: 500;
+    text-decoration: underline;
+    text-decoration-color: color-mix(
+      in oklab,
+      var(--foreground) 25%,
+      transparent
+    );
+    text-underline-offset: 3px;
+  }
+
+  .tagline a:hover {
+    text-decoration-color: var(--foreground);
+  }
+
+  .links {
+    display: flex;
+    gap: 1rem;
+    flex-shrink: 0;
+  }
+
+  .links a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .links a:hover {
+    color: var(--foreground);
+  }
+</style>

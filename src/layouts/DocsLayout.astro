@@ -1,0 +1,676 @@
+---
+import { getCollection } from "astro:content";
+import { fade } from "astro:transitions";
+import Layout from "@/layouts/Layout.astro";
+import Sidebar from "@/components/Sidebar.astro";
+import SiteSearch from "@/components/SiteSearch.astro";
+import Footer from "@/components/Footer.astro";
+import { site, withBase } from "@/lib/site";
+import { sortStatuses } from "@/lib/status";
+import "@/styles/search.css";
+
+interface Props {
+  title: string;
+  description?: string;
+  canonical?: string;
+  activeSlug?: string;
+  activeCategory?: string;
+  statusCode?: number;
+  ogType?: "website" | "article";
+}
+
+const {
+  title,
+  description,
+  canonical,
+  activeSlug,
+  activeCategory,
+  statusCode,
+  ogType = "website",
+} = Astro.props;
+const statuses = sortStatuses(await getCollection("status"));
+
+const MDN_STATUS_BASE =
+  "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status";
+const referenceUrl =
+  statusCode != null ? `${MDN_STATUS_BASE}/${statusCode}` : MDN_STATUS_BASE;
+---
+
+<Layout
+  title={title}
+  description={description}
+  canonical={canonical}
+  ogType={ogType}
+>
+  <div class="shell" data-app-shell>
+    <header class="topbar" transition:persist="app-topbar">
+      <div class="topbar-left">
+        <button
+          type="button"
+          class="icon-btn lg-hide"
+          data-open-nav
+          aria-label="Open navigation menu"
+          aria-expanded="false"
+          aria-controls="mobile-nav"
+        >
+          <svg
+            class="size-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"
+          >
+            <path d="M4 5h16"></path><path d="M4 12h16"></path><path
+              d="M4 19h16"></path>
+          </svg>
+        </button>
+        <a href={withBase()} class="brand" aria-label={site.name}>
+          <span class="brand-mark" aria-hidden="true">{site.brand.mark}</span>
+          <span class="brand-text" aria-hidden="true">
+            {site.brand.primary}<span class="brand-muted"
+              >{site.brand.secondary}</span
+            >
+          </span>
+        </a>
+      </div>
+      <div class="topbar-center">
+        <SiteSearch statuses={statuses} variant="trigger" />
+      </div>
+      <div class="topbar-right">
+        <a
+          href={referenceUrl}
+          data-ref-link
+          target="_blank"
+          rel="noopener noreferrer"
+          class="ref-link"
+          aria-label="MDN HTTP status reference (opens in a new tab)"
+        >
+          <svg
+            class="size-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"
+          >
+            <path
+              d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"
+            ></path>
+          </svg>
+          <span class="ref-label">Reference</span>
+        </a>
+      </div>
+    </header>
+
+    <SiteSearch statuses={statuses} variant="modal" />
+
+    <aside
+      class="sidebar desktop-sidebar"
+      aria-label="Status code navigation"
+      data-desktop-sidebar
+    >
+      <Sidebar
+        statuses={statuses}
+        activeSlug={activeSlug}
+        activeCategory={activeCategory}
+        idPrefix="desktop"
+      />
+    </aside>
+
+    <div class="drawer" data-drawer aria-hidden="true" inert>
+      <div class="drawer-backdrop" data-close-nav></div>
+      <aside
+        id="mobile-nav"
+        class="drawer-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Navigation"
+      >
+        <div class="drawer-head">
+          <span class="drawer-label" id="mobile-nav-title">Status_Codes</span>
+          <button
+            type="button"
+            class="icon-btn"
+            data-close-nav
+            aria-label="Close navigation menu"
+          >
+            <svg
+              class="size-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              aria-hidden="true"
+            >
+              <path d="M18 6 6 18"></path><path d="m6 6 12 12"></path>
+            </svg>
+          </button>
+        </div>
+        <Sidebar
+          statuses={statuses}
+          activeSlug={activeSlug}
+          activeCategory={activeCategory}
+          idPrefix="mobile"
+        />
+      </aside>
+    </div>
+
+    <main
+      id="main-content"
+      class="main"
+      transition:animate={fade({ duration: "180ms" })}
+    >
+      <slot />
+      <div class="footer-wrap">
+        <Footer />
+      </div>
+    </main>
+  </div>
+</Layout>
+
+<script>
+  let lastFocus: HTMLElement | null = null;
+  let trapHandler: ((event: KeyboardEvent) => void) | null = null;
+
+  const FOCUSABLE =
+    'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+  function getDrawer() {
+    return document.querySelector("[data-drawer]");
+  }
+
+  function getPanel() {
+    return document.querySelector<HTMLElement>("#mobile-nav");
+  }
+
+  function getOpenBtn() {
+    return document.querySelector<HTMLButtonElement>("[data-open-nav]");
+  }
+
+  function getFocusable(root: HTMLElement) {
+    return [...root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
+      (el) =>
+        !el.hasAttribute("disabled") &&
+        el.getAttribute("aria-hidden") !== "true" &&
+        el.offsetParent !== null
+    );
+  }
+
+  function releaseTrap() {
+    if (!trapHandler) return;
+    document.removeEventListener("keydown", trapHandler);
+    trapHandler = null;
+  }
+
+  function armTrap(panel: HTMLElement) {
+    releaseTrap();
+    trapHandler = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeDrawer();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const items = getFocusable(panel);
+      if (items.length === 0) {
+        event.preventDefault();
+        return;
+      }
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", trapHandler);
+  }
+
+  function closeDrawer() {
+    const drawer = getDrawer();
+    if (!drawer?.classList.contains("open")) return;
+    drawer.classList.remove("open");
+    drawer.setAttribute("aria-hidden", "true");
+    (drawer as HTMLElement).inert = true;
+    document.body.style.overflow = "";
+    getOpenBtn()?.setAttribute("aria-expanded", "false");
+    releaseTrap();
+    lastFocus?.focus();
+    lastFocus = null;
+  }
+
+  function openDrawer() {
+    const drawer = getDrawer();
+    const panel = getPanel();
+    if (!drawer || !panel) return;
+    lastFocus =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    drawer.classList.add("open");
+    drawer.setAttribute("aria-hidden", "false");
+    (drawer as HTMLElement).inert = false;
+    document.body.style.overflow = "hidden";
+    getOpenBtn()?.setAttribute("aria-expanded", "true");
+    armTrap(panel);
+    const input = panel.querySelector<HTMLInputElement>("[data-status-search]");
+    const closeBtn = panel.querySelector<HTMLButtonElement>("[data-close-nav]");
+    requestAnimationFrame(() => (input ?? closeBtn)?.focus());
+  }
+
+  document.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    if (target.closest("[data-open-nav]")) {
+      event.preventDefault();
+      openDrawer();
+      return;
+    }
+
+    if (target.closest("[data-close-nav]")) {
+      event.preventDefault();
+      closeDrawer();
+      return;
+    }
+
+    const statusBase = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/status/`;
+    const statusLink = target.closest<HTMLAnchorElement>("a[href]");
+    if (
+      statusLink &&
+      new URL(statusLink.href).pathname.startsWith(statusBase) &&
+      getDrawer()?.contains(statusLink) &&
+      window.matchMedia("(max-width: 1023px)").matches
+    ) {
+      closeDrawer();
+    }
+  });
+
+  document.addEventListener("astro:before-preparation", closeDrawer);
+
+  const SIDEBAR_SCROLL_KEY = "httpguides:desktop-sidebar-scroll";
+
+  function getDesktopSidebarScroll() {
+    return document.querySelector(
+      "[data-desktop-sidebar] [data-sidebar-scroll]"
+    );
+  }
+
+  document.addEventListener("astro:before-preparation", () => {
+    const scroller = getDesktopSidebarScroll();
+    if (scroller instanceof HTMLElement) {
+      sessionStorage.setItem(SIDEBAR_SCROLL_KEY, String(scroller.scrollTop));
+    }
+  });
+
+  document.addEventListener("astro:after-swap", () => {
+    const scroller = getDesktopSidebarScroll();
+    const raw = sessionStorage.getItem(SIDEBAR_SCROLL_KEY);
+    if (!(scroller instanceof HTMLElement) || raw == null) return;
+    scroller.scrollTop = Number(raw);
+  });
+
+  document.addEventListener("astro:page-load", () => {
+    const scroller = getDesktopSidebarScroll();
+    const active = scroller?.querySelector(".item.active");
+    if (
+      !(scroller instanceof HTMLElement) ||
+      !(active instanceof HTMLElement)
+    ) {
+      return;
+    }
+    const itemRect = active.getBoundingClientRect();
+    const viewRect = scroller.getBoundingClientRect();
+    if (itemRect.top < viewRect.top || itemRect.bottom > viewRect.bottom) {
+      active.scrollIntoView({ block: "nearest" });
+    }
+  });
+
+  const MDN_STATUS_BASE =
+    "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status";
+
+  function syncReferenceLink() {
+    const link = document.querySelector<HTMLAnchorElement>("[data-ref-link]");
+    if (!link) return;
+    const statusBase = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/status`;
+    const match = window.location.pathname.match(
+      new RegExp(`^${statusBase}/(\\d+)`)
+    );
+    const href = match ? `${MDN_STATUS_BASE}/${match[1]}` : MDN_STATUS_BASE;
+    link.href = href;
+    link.setAttribute(
+      "aria-label",
+      match
+        ? `MDN reference for HTTP ${match[1]} (opens in a new tab)`
+        : "MDN HTTP status reference (opens in a new tab)"
+    );
+  }
+
+  document.addEventListener("astro:page-load", syncReferenceLink);
+</script>
+
+<style>
+  .shell {
+    min-height: 100dvh;
+    background: var(--background);
+  }
+
+  .topbar {
+    position: fixed;
+    inset: 0 0 auto;
+    z-index: 40;
+    height: var(--topbar-height);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 0.75rem;
+    border-bottom: 1px solid var(--border);
+    background: color-mix(in oklab, var(--background) 85%, transparent);
+    backdrop-filter: blur(12px);
+  }
+
+  @media (min-width: 640px) {
+    .topbar {
+      gap: 0.75rem;
+      padding: 0 1rem;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .topbar {
+      padding: 0 1.5rem;
+    }
+  }
+
+  .topbar-left,
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 0 0 auto;
+    min-width: 0;
+  }
+
+  .topbar-center {
+    display: flex;
+    justify-content: center;
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+  }
+
+  @media (min-width: 640px) {
+    .topbar-left,
+    .topbar-right {
+      gap: 0.75rem;
+      flex: 1 1 0;
+    }
+
+    .topbar-center {
+      flex: 0 1 22rem;
+      width: min(100%, 22rem);
+    }
+  }
+
+  .topbar-right {
+    justify-content: flex-end;
+  }
+
+  .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    border: none;
+    border-radius: 0.375rem;
+    background: transparent;
+    color: var(--foreground);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 639px) {
+    .icon-btn {
+      width: 3rem;
+      height: 3rem;
+      min-width: 48px;
+      min-height: 48px;
+    }
+  }
+
+  .icon-btn:hover {
+    background: var(--surface-container-high);
+  }
+
+  .icon-btn:focus-visible,
+  .ref-link:focus-visible,
+  .brand:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    color: var(--foreground);
+  }
+
+  .brand-mark {
+    display: grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 0.375rem;
+    background: var(--primary);
+    color: var(--primary-foreground);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .brand-text {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  @media (max-width: 639px) {
+    .brand {
+      display: none;
+    }
+  }
+
+  .brand-muted {
+    color: var(--muted-foreground);
+  }
+
+  .ref-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 3rem;
+    height: 3rem;
+    min-width: 48px;
+    min-height: 48px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--muted-foreground);
+    text-decoration: none;
+    flex-shrink: 0;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
+  }
+
+  .ref-link:hover {
+    background: var(--surface-container-high);
+    color: var(--foreground);
+  }
+
+  .ref-label {
+    display: none;
+  }
+
+  @media (min-width: 640px) {
+    .ref-link {
+      width: auto;
+      height: auto;
+      min-width: 0;
+      min-height: 0;
+      padding: 0.375rem 0.75rem;
+    }
+
+    .ref-label {
+      display: inline;
+    }
+  }
+
+  .desktop-sidebar {
+    display: none;
+  }
+
+  .main {
+    padding-top: var(--topbar-height);
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    /* Allow flex children to shrink below intrinsic content width (code blocks, etc.) */
+    min-width: 0;
+  }
+
+  .main > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .footer-wrap {
+    max-width: var(--content-max-width);
+    width: 100%;
+    margin: auto auto 0;
+    padding: 0 1rem 2.5rem;
+    box-sizing: border-box;
+  }
+
+  @media (min-width: 768px) {
+    .footer-wrap {
+      padding: 0 2.5rem 3.5rem;
+    }
+  }
+
+  .drawer {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .drawer.open {
+    pointer-events: auto;
+  }
+
+  .drawer-backdrop {
+    position: absolute;
+    inset: 0;
+    background: color-mix(in oklab, var(--foreground) 30%, transparent);
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .drawer.open .drawer-backdrop {
+    opacity: 1;
+  }
+
+  .drawer-panel {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: min(var(--sidebar-width), 85%);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-right: 1px solid var(--border);
+    background: var(--sidebar);
+    padding: 1rem 0.75rem;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+
+  .drawer.open .drawer-panel {
+    transform: translateX(0);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .drawer-backdrop,
+    .drawer-panel {
+      transition: none;
+    }
+  }
+
+  .drawer-head {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 0.75rem 1rem;
+  }
+
+  .drawer-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .lg-hide {
+    display: inline-flex;
+  }
+
+  @media (min-width: 1024px) {
+    .lg-hide {
+      display: none !important;
+    }
+
+    .drawer {
+      display: none;
+    }
+
+    .desktop-sidebar {
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: var(--topbar-height);
+      bottom: 0;
+      left: 0;
+      z-index: 30;
+      width: var(--sidebar-width);
+      overflow: hidden;
+      border-right: 1px solid var(--border);
+      background: var(--sidebar);
+      padding: 1.5rem 0.75rem;
+    }
+
+    .main {
+      padding-left: var(--sidebar-width);
+    }
+  }
+</style>

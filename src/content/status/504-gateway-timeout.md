@@ -1,0 +1,57 @@
+---
+code: 504
+title: "Gateway Timeout"
+slug: "504-gateway-timeout"
+category: "server-error"
+description: "Learn what the HTTP 504 Gateway Timeout status code means, when it happens, and how to fix it in Apache and Traefik."
+updated: "2026-08-02"
+created: "2026-08-02"
+referenceUrl: "https://httpguides.com/status/504-gateway-timeout"
+---
+
+The <abbr title="Hypertext Transfer Protocol">HTTP</abbr> 504 status code means a proxy server (also known as a gateway) didn't receive the response from the upstream server (also known as an origin server) in a timely manner.
+
+Having a proxy server in front of the application (upstream) server is a common pattern in production web apps. Web servers (acting as reverse proxies) are more efficient at and capable of terminating <abbr title="Transport Layer Security">TLS</abbr> connections, dealing with slow clients, compressing requests, and serving static files quickly. Some popular open-source software used as proxies are Apache, Nginx, HAProxy, Varnish, and Caddy.
+
+When proxying requests to the upstream server, make sure to include the following HTTP headers from the web server to the upstream:
+
+    X-Forwarded-For
+    X-Forwarded-Host
+    X-Forwarded-Port
+    X-Forwarded-Proto
+    X-Real-Ip
+
+## Apache
+
+if you're running into a 504 status code with Apache, try increasing the <a href="https://httpd.apache.org/docs/current/mod/core.html#timeout" target="_blank" rel="noopener">`TimeOut` directive</a> in your `httpd.conf` file:
+
+    TimeOut 600
+
+Also, match <a href="https://www.php.net/manual/en/info.configuration.php#ini.max-execution-time" target="_blank" rel="noopener">the `max_execution_time` directive</a> in your php.ini config file to the `TimeOut` value you set in your `httpd.conf` file:
+
+    max_execution_time=600
+
+While you can increase the timeout on the web server, it is better to check the upstream server and make sure there are no surprises there.
+
+## Traefik
+
+With <a href="https://traefik.io" target="_blank" rel="noopener">Traefik</a>, this happens when the backend accepts the connection but is too slow to answer. Two settings control how long Traefik waits: the entry point's <a href="https://doc.traefik.io/traefik/reference/install-configuration/entrypoints/" target="_blank" rel="noopener">`respondingTimeouts.readTimeout`</a> (60 seconds by default) and the backend-specific <a href="https://doc.traefik.io/traefik/reference/routing-configuration/http/load-balancing/serverstransport/" target="_blank" rel="noopener">`serversTransport.forwardingTimeouts.responseHeaderTimeout`</a> (unbounded by default).
+
+    entryPoints:
+      web:
+        address: ":80"
+        transport:
+          respondingTimeouts:
+            readTimeout: 120s
+      services:
+        my-service:
+          loadBalancer:
+            serversTransport: mytransport
+
+    http:
+      serversTransports:
+        mytransport:
+          forwardingTimeouts:
+            responseHeaderTimeout: 90s
+
+As with Apache, increasing the timeout only buys time — it's worth checking why the upstream service is slow to respond in the first place.
