@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://lucho00cuba.github.io/http-directory/sitemap-index.xml

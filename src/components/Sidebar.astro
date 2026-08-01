@@ -1,0 +1,546 @@
+---
+import type { StatusEntry } from "../lib/status";
+import {
+  ACCENT_CLASSES,
+  canonicalPath,
+  displayTitle,
+  groupByCategory,
+  shortPath,
+} from "../lib/status";
+import CategoryIcon from "./CategoryIcon.astro";
+
+interface Props {
+  statuses: StatusEntry[];
+  activeSlug?: string;
+  activeCategory?: string;
+  idPrefix?: string;
+}
+
+const { statuses, activeSlug, activeCategory, idPrefix = "nav" } = Astro.props;
+const groups = groupByCategory(statuses);
+---
+
+<div class="sidebar-nav" data-sidebar-search>
+  <div class="search-header">
+    <div class="search-wrap">
+      <svg
+        class="search-icon"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        aria-hidden="true"
+      >
+        <circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path>
+      </svg>
+      <input
+        type="search"
+        data-status-search
+        placeholder="Search codes…"
+        aria-label="Search status codes"
+        autocomplete="off"
+        spellcheck="false"
+        enterkeyhint="go"
+      />
+      <button
+        type="button"
+        class="clear-btn"
+        data-clear-search
+        hidden
+        aria-label="Clear search"
+      >
+        <svg
+          class="size-4"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          aria-hidden="true"
+        >
+          <path d="M18 6 6 18"></path><path d="m6 6 12 12"></path>
+        </svg>
+      </button>
+    </div>
+    <p class="results" data-search-count hidden aria-live="polite"></p>
+  </div>
+
+  <nav class="nav" aria-label="HTTP status categories" data-sidebar-scroll>
+    {
+      groups.map(({ category, meta, entries }) => {
+        const accent = ACCENT_CLASSES[meta.accent];
+        const isActiveCat = activeCategory === category;
+        const panelId = `${idPrefix}-group-${category}`;
+        return (
+          <div
+            class="group"
+            data-search-group
+            data-group-id={category}
+            data-accent-border={accent.border}
+            data-accent-text={accent.text}
+          >
+            <button
+              type="button"
+              class:list={["group-btn", { active: isActiveCat }]}
+              data-toggle-group
+              aria-expanded="true"
+              aria-controls={panelId}
+            >
+              <span class:list={["icon-box", accent.softBg]} aria-hidden="true">
+                <CategoryIcon
+                  name={meta.icon}
+                  class={`size-3.5 ${accent.text}`}
+                />
+              </span>
+              <span class="group-labels">
+                <span class="group-range">{meta.label}</span>
+                <span class="group-name">{meta.name}</span>
+              </span>
+              <span class="group-count" data-group-count aria-hidden="true">
+                {entries.length}
+              </span>
+              <svg
+                class="chevron"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                aria-hidden="true"
+              >
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+            <ul id={panelId} class="group-list" data-group-panel>
+              {entries.map((entry) => {
+                const isActive =
+                  activeSlug === entry.data.slug ||
+                  activeSlug === String(entry.data.code);
+                const label = [
+                  displayTitle(entry),
+                  entry.data.slug,
+                  entry.data.title,
+                  entry.data.description,
+                  meta.range,
+                  meta.name,
+                ]
+                  .join(" ")
+                  .toLowerCase();
+                return (
+                  <li
+                    data-search-item
+                    data-label={label}
+                    data-href={shortPath(entry)}
+                  >
+                    <a
+                      href={canonicalPath(entry)}
+                      class:list={[
+                        "item",
+                        { active: isActive },
+                        isActive && accent.border,
+                      ]}
+                      data-slug={entry.data.slug}
+                      data-code={String(entry.data.code)}
+                      aria-current={isActive ? "page" : undefined}
+                    >
+                      <span
+                        class:list={[
+                          "code",
+                          isActive ? accent.text : "code-muted",
+                        ]}
+                      >
+                        {entry.data.code}
+                      </span>
+                      <span class="title">{entry.data.title}</span>
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        );
+      })
+    }
+
+    <div class="empty" data-search-empty hidden>
+      <p>No status codes match</p>
+      <p class="empty-q" data-search-empty-q></p>
+    </div>
+  </nav>
+</div>
+
+<style>
+  .sidebar-nav {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 1rem;
+    min-height: 0;
+  }
+
+  .search-header {
+    flex-shrink: 0;
+  }
+
+  .search-wrap {
+    position: relative;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    width: 1rem;
+    height: 1rem;
+    transform: translateY(-50%);
+    color: var(--muted-foreground);
+    pointer-events: none;
+  }
+
+  .search-wrap input {
+    width: 100%;
+    height: 2.5rem;
+    box-sizing: border-box;
+    padding: 0 2.25rem 0 2.25rem;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    background: var(--surface-container);
+    color: var(--foreground);
+    font-size: 0.875rem;
+  }
+
+  .search-wrap input::placeholder {
+    color: var(--muted-foreground);
+  }
+
+  .search-wrap input:focus {
+    outline: none;
+    border-color: transparent;
+    box-shadow: 0 0 0 2px var(--ring);
+  }
+
+  .clear-btn {
+    position: absolute;
+    right: 0.35rem;
+    top: 50%;
+    transform: translateY(-50%);
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border: none;
+    border-radius: 0.375rem;
+    background: transparent;
+    color: var(--muted-foreground);
+    cursor: pointer;
+  }
+
+  .clear-btn:hover {
+    background: var(--sidebar-accent);
+    color: var(--foreground);
+  }
+
+  .clear-btn[hidden] {
+    display: none;
+  }
+
+  .results {
+    margin: 0.5rem 0.25rem 0;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted-foreground);
+  }
+
+  .results[hidden] {
+    display: none;
+  }
+
+  .nav {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .group-btn {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 0.65rem;
+    min-height: 2.5rem;
+    padding: 0.5rem 0.65rem;
+    border: none;
+    border-radius: 0.5rem;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+    color: inherit;
+    transition: background 0.15s ease;
+  }
+
+  .group-btn:hover,
+  .group-btn.active {
+    background: var(--sidebar-accent);
+  }
+
+  .group-btn[aria-expanded="false"] .chevron {
+    transform: rotate(-90deg);
+  }
+
+  .icon-box {
+    display: grid;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 0.375rem;
+    flex-shrink: 0;
+  }
+
+  .group-labels {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    align-items: baseline;
+    gap: 0.4rem;
+  }
+
+  .group-range {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--foreground);
+  }
+
+  .group-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--sidebar-foreground);
+  }
+
+  .group-count {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+    color: var(--muted-foreground);
+  }
+
+  .chevron {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+    color: var(--muted-foreground);
+    transition: transform 0.2s ease;
+  }
+
+  .group-list {
+    list-style: none;
+    margin: 0.125rem 0 0;
+    padding: 0 0 0 0.875rem;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .group-list[hidden] {
+    display: none;
+  }
+
+  .item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 2.5rem;
+    padding: 0.5rem 0.5rem 0.5rem 0.75rem;
+    border-left: 2px solid transparent;
+    border-radius: 0.375rem;
+    text-decoration: none;
+    font-size: 0.875rem;
+    color: var(--muted-foreground);
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
+  }
+
+  .item:hover {
+    border-left-color: var(--border);
+    background: var(--sidebar-accent);
+    color: var(--foreground);
+  }
+
+  .item.active {
+    font-weight: 600;
+    color: var(--foreground);
+    background: var(--sidebar-accent);
+    border-left-width: 3px;
+  }
+
+  .code {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .code-muted {
+    color: color-mix(in oklab, var(--foreground) 70%, transparent);
+  }
+
+  .title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .group[hidden] {
+    display: none;
+  }
+
+  .empty {
+    margin-top: 0.5rem;
+    padding: 1.5rem 0.75rem;
+    border: 1px dashed var(--border);
+    border-radius: 0.5rem;
+    text-align: center;
+  }
+
+  .empty[hidden] {
+    display: none;
+  }
+
+  .empty p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--muted-foreground);
+  }
+
+  .empty-q {
+    margin-top: 0.25rem !important;
+    font-family: var(--font-mono);
+    font-size: 0.75rem !important;
+    color: var(--foreground) !important;
+  }
+
+  li[hidden] {
+    display: none;
+  }
+</style>
+
+<script>
+  function initSidebar(root: Element) {
+    if (!(root instanceof HTMLElement)) return;
+    if (root.dataset.searchReady === "1") return;
+    root.dataset.searchReady = "1";
+
+    const input = root.querySelector<HTMLInputElement>("[data-status-search]");
+    const clearBtn = root.querySelector<HTMLButtonElement>(
+      "[data-clear-search]"
+    );
+    const countEl = root.querySelector<HTMLElement>("[data-search-count]");
+    const empty = root.querySelector<HTMLElement>("[data-search-empty]");
+    const emptyQ = root.querySelector<HTMLElement>("[data-search-empty-q]");
+    const groups = [
+      ...root.querySelectorAll<HTMLElement>("[data-search-group]"),
+    ];
+    if (!input) return;
+
+    const collapsed = new Set<string>();
+
+    const scroller = root.querySelector<HTMLElement>("[data-sidebar-scroll]");
+    let wasSearching = false;
+
+    const apply = () => {
+      const q = input.value.trim().toLowerCase();
+      const searching = q.length > 0;
+      let total = 0;
+
+      if (clearBtn) clearBtn.hidden = !searching;
+
+      groups.forEach((group) => {
+        const id = group.dataset.groupId ?? "";
+        const items = [
+          ...group.querySelectorAll<HTMLElement>("[data-search-item]"),
+        ];
+        const panel = group.querySelector<HTMLElement>("[data-group-panel]");
+        const toggle = group.querySelector<HTMLButtonElement>(
+          "[data-toggle-group]"
+        );
+        const count = group.querySelector<HTMLElement>("[data-group-count]");
+        let visible = 0;
+
+        items.forEach((item) => {
+          const label = item.dataset.label ?? "";
+          const match = !searching || label.includes(q);
+          item.hidden = !match;
+          if (match) visible += 1;
+        });
+
+        total += visible;
+        group.hidden = searching && visible === 0;
+        if (count) count.textContent = String(visible);
+
+        const open = searching || !collapsed.has(id);
+        if (panel) panel.hidden = !open;
+        if (toggle)
+          toggle.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+
+      if (countEl) {
+        countEl.hidden = !searching;
+        countEl.textContent = `${total} ${total === 1 ? "result" : "results"}`;
+      }
+      if (empty) empty.hidden = !searching || total > 0;
+      if (emptyQ) emptyQ.textContent = `“${input.value.trim()}”`;
+
+      if (searching && !wasSearching && scroller) {
+        scroller.scrollTop = 0;
+      }
+      wasSearching = searching;
+    };
+
+    input.addEventListener("input", apply);
+    clearBtn?.addEventListener("click", () => {
+      input.value = "";
+      input.focus();
+      apply();
+    });
+
+    input.addEventListener("keydown", (e) => {
+      if (e.isComposing || e.keyCode === 229) return;
+      if (e.key !== "Enter") return;
+      const q = input.value.trim();
+      if (!q) return;
+      const first = root.querySelector<HTMLElement>(
+        "[data-search-item]:not([hidden])"
+      );
+      const href = first?.dataset.href;
+      if (!href) return;
+      e.preventDefault();
+      import("astro:transitions/client").then(({ navigate }) => navigate(href));
+    });
+
+    root
+      .querySelectorAll<HTMLButtonElement>("[data-toggle-group]")
+      .forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const group = btn.closest<HTMLElement>("[data-search-group]");
+          const id = group?.dataset.groupId;
+          if (!id) return;
+          if (collapsed.has(id)) collapsed.delete(id);
+          else collapsed.add(id);
+          apply();
+        });
+      });
+
+    apply();
+  }
+
+  document.addEventListener("astro:page-load", () => {
+    document.querySelectorAll("[data-sidebar-search]").forEach(initSidebar);
+  });
+</script>
